@@ -48,6 +48,13 @@ errorRate = comm.ErrorRate;
 BER  = zeros(3,length(EbNo));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            Input Data                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+data = randi([0 ModOrd-1],nframes*numData * numSym * Tx);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                              Plotting                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -68,30 +75,22 @@ set(fig, 'DefaultLegendAutoUpdate', 'off');
 fig.Position = figposition([15 50 25 30]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                            Input Data                                  %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Monte Carlo simulations                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for idx = 1:length(EbNo)
     reset(errorRate)
     for k = 1:nframes
         % Find row indices for kth OFDM frame
-        indData = (k-1)*numData*numSym*Tx+1:k*numData*numSym*Tx;
+        indData = (k-1)*numData+1:k*numData;
         
-        modData = Mod(data(indData));
+        modData = Mod(data((k-1)*numData*N));
         modData = reshape(modData,numData,numSym,Tx);
         
         % Generate pilot symbols
         PD = complex(rand(numPilots),rand(numPilots));
 
         % Modulate symbols using OFDM
-        dataOFDM = ofdmMod(modData,PD);
+        dataOFDM = ofdmMod(modData(indData,:,:),PD);
 
         % Create flat, i.i.d., Rayleigh fading channel
         chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2);
@@ -113,7 +112,7 @@ for idx = 1:length(EbNo)
         receivedData = Demod(RxOFDMEst(:));
 
         % Compute error statistics
-        dataTmp = data(indData);
+        dataTmp = data(indData,:,:);
         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
     
