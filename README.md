@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# PS1
-
-=======
 # PS1 : SDR Design for HD Video Transmission
 
 Prepared in partial fulfillment of the Practice School 1 course, 2021. <br />
@@ -20,5 +16,3 @@ Aditya Soni <br />
 ## Mentors: 
 Industry Mentor:  AEE Naveen Reddy, Executive Engineer, M.C.E.M.E. <br />
 Faculty Mentor:   Dr. Rahul Singhal, Assistant Professor, BITS Pilani <br />
->>>>>>> c63ca0cefc16eedba5a9aba3fa659cc6b9e9a65a
-
