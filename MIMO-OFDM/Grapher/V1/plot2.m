@@ -10,12 +10,6 @@ Mod = comm.QPSKModulator;
 Demod = comm.QPSKDemodulator;
 ModOrd = 4;
 
-% initialize channel coding objects
-ldpcEncoder = comm.LDPCEncoder;
-ldpcDecoder = comm.LDPCDecoder;
-K = 32400;
-
-
 % Set up MIMO system
 Tx = 3;
 Rx = 3;
@@ -62,11 +56,10 @@ BER  = zeros(3,length(EbNo));
 %                              Plotting                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fig = figure;
-grid on;
+fig = openfig('Graph.fig');
+hold on;
 ax = fig.CurrentAxes;
 hold(ax,'on');
-ax.YScale = 'log';
 xlim(ax,[EbNo(1), EbNo(end)]);
 ylim(ax,[1e-4 1]);
 xlabel(ax,'Eb/No (dB)');
@@ -75,8 +68,11 @@ fig.NumberTitle = 'off';
 fig.Renderer = 'zbuffer';
 fig.Name = 'BER vs. Eb/No';
 title(ax,'Error rate vs. Energy per symbol');
-set(fig, 'DefaultLegendAutoUpdate', 'off');
+%set(fig, 'DefaultLegendAutoUpdate', 'off');
 fig.Position = figposition([15 50 25 30]);
+l = legend
+
+legend(ax,{ l.String{1} , '3x3 MIMO-OFDM (3Tx, 3Rx)'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                            Input Data                                  %
@@ -130,16 +126,16 @@ for idx = 1:length(EbNo)
     
     % Print & plot stats
     fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
-    semilogy(ax,EbNo(1:idx), BER(1,1:idx), 'go');
-    legend(ax,'2x2 MIMO-OFDM (2Tx, 2Rx)');
+    semilogy(ax,EbNo(1:idx), BER(1,1:idx), 'bo');
     drawnow;
 end
 
 % Plot line fit
 fitBER = berfit(EbNo, BER(1,:));
-semilogy(ax,EbNo, fitBER, 'g');
+semilogy(ax,EbNo, fitBER, 'b');
 hold(ax,'off');
 
+saveas(fig,'Graph.fig');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %

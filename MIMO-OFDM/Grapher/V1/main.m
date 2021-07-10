@@ -10,15 +10,9 @@ Mod = comm.QPSKModulator;
 Demod = comm.QPSKDemodulator;
 ModOrd = 4;
 
-% initialize channel coding objects
-ldpcEncoder = comm.LDPCEncoder;
-ldpcDecoder = comm.LDPCDecoder;
-K = 32400;
-
-
 % Set up MIMO system
-Tx = 3;
-Rx = 3;
+Tx = 2;
+Rx = 2;
 f  = 900*10^6;
 d  = 1;
 c  = 3*10^8;
@@ -140,6 +134,7 @@ fitBER = berfit(EbNo, BER(1,:));
 semilogy(ax,EbNo, fitBER, 'g');
 hold(ax,'off');
 
+saveas(fig,'Graph.fig');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
