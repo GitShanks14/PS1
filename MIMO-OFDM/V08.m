@@ -6,13 +6,23 @@
 close all; clear; clc;
 
 % initialize modulators
-Mod = comm.BPSKModulator;
-Demod = comm.BPSKDemodulator;
-ModOrd = 2;
+Mod = comm.QPSKModulator;
+Demod = comm.QPSKDemodulator;
+ModOrd = 4;
+
+% initialize channel coding objects
+ldpcEncoder = comm.LDPCEncoder;
+ldpcDecoder = comm.LDPCDecoder;
+
 
 % Set up MIMO system
-Tx = 2;
-Rx = 2;
+Tx = 3;
+Rx = 3;
+f  = 900*10^6;
+d  = 1;
+c  = 3*10^8;
+
+FSPL = c/(4*pi*d*f);
 
 % Set up OFDM system
 FFTlen = 64;
@@ -39,20 +49,16 @@ showResourceMapping(ofdmMod)
 %                        Simulation Parameters                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-EbNo = 0:5:60;
+EbNo = 0:5:90;
 nframes = 10000;
+nData = nframes*numData * numSym * Tx;
+K = 32400;
+BlockSize = lcm(K,nData);
 
 errorRate = comm.ErrorRate;
 
 % Defining the matrix that contains BER information
 BER  = zeros(3,length(EbNo));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                            Input Data                                  %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-data = randi([0 ModOrd-1],nframes*numData * numSym * Tx);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                              Plotting                                  %
@@ -75,25 +81,33 @@ set(fig, 'DefaultLegendAutoUpdate', 'off');
 fig.Position = figposition([15 50 25 30]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            Input Data                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Block = randi([0 ModOrd-1],BlockSize,1);
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Monte Carlo simulations                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for idx = 1:length(EbNo)
     reset(errorRate)
     for k = 1:nframes
         % Find row indices for kth OFDM frame
-        indData = (k-1)*numData+1:k*numData;
+        indData = (k-1)*numData*numSym*Tx+1:k*numData*numSym*Tx;
         
-        modData = Mod(data((k-1)*numData*N));
+        modData = Mod(data(indData));
         modData = reshape(modData,numData,numSym,Tx);
         
         % Generate pilot symbols
         PD = complex(rand(numPilots),rand(numPilots));
 
         % Modulate symbols using OFDM
-        dataOFDM = ofdmMod(modData(indData,:,:),PD);
+        dataOFDM = ofdmMod(modData,PD);
 
         % Create flat, i.i.d., Rayleigh fading channel
-        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2);
+        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
         % Pass OFDM signal through Rayleigh and AWGN channels
         receivedSignal = awgn(dataOFDM*chGain,EbNo(idx));
@@ -112,12 +126,12 @@ for idx = 1:length(EbNo)
         receivedData = Demod(RxOFDMEst(:));
 
         % Compute error statistics
-        dataTmp = data(indData,:,:);
+        dataTmp = data(indData);
         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
     
     % Print & plot stats
-    %fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
+    fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
     semilogy(ax,EbNo(1:idx), BER(1,1:idx), 'go');
     legend(ax,'2x2 MIMO-OFDM (2Tx, 2Rx)');
     drawnow;
