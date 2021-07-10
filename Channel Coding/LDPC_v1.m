@@ -1,13 +1,5 @@
-
-msg = randi([0 1],10000,1,'int8');
-msgrx = zeros(size(msg));
-
-%reader = dsp.BinaryFileReader('theoretical.png','DataType','uint8','SamplesPerFrame',16);
-%readerData = reader();
-%f = dec2bin(readerData);
-%binData = de2bi(readerData);
-
-
+%replace baal.mp4 with any other file, replace out.mp4 with the name of the
+%output file
 
 fileID = fopen('baal.mp4');
 f = fread(fileID,'*ubit1', 'ieee-le');

@@ -1,13 +1,5 @@
-
-msg = randi([0 1],10000,1,'int8');
-msgrx = zeros(size(msg));
-
-%reader = dsp.BinaryFileReader('theoretical.png','DataType','uint8','SamplesPerFrame',16);
-%readerData = reader();
-%f = dec2bin(readerData);
-%binData = de2bi(readerData);
-
-
+%replace theoretical.png with any other file, replace out.png with the name of the
+%output file
 
 fileID = fopen('theoretical.png');
 f = fread(fileID,'*ubit1', 'ieee-le');
