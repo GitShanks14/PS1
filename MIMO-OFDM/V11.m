@@ -6,16 +6,20 @@
 close all; clear; clc;
 
 % initialize modulators
-Mod = comm.QPSKModulator('BitInput', true);
-Demod = comm.QPSKDemodulator('BitOutput',true);
+%Mod = comm.QPSKModulator('BitInput', true);
+Mod = comm.BPSKModulator();
+
+% initialize demodulators
+%Demod = comm.QPSKDemodulator('BitOutput',true);
 %Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
-ModOrd = 4;
-Nbits = 2;
+Demod = comm.BPSKDemodulator('DecisionMethod','Approximate log-likelihood ratio');
+ModOrd = 2;
+Nbits = 1;
 
 
 % initialize channel coding objects
-ldpcEncoder = comm.LDPCEncoder;
-ldpcDecoder = comm.LDPCDecoder;
+Enc = comm.LDPCEncoder;
+Dec = comm.LDPCDecoder;
 K = 32400;
 R = 1/2;
 
@@ -54,8 +58,13 @@ showResourceMapping(ofdmMod)
 %                        Simulation Parameters                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 EbNo = 0:5:90;
 nframes = 10000;
+Nofdm = numData * numSym * Tx * Nbits;
+
+InputBlockSize = lcm(Nofdm,K);
+OutputBlockSize = InputBlockSize/R;
 
 errorRate = comm.ErrorRate;
 
@@ -88,8 +97,8 @@ fig.Position = figposition([15 50 25 30]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
-data = randi([0 1],nframes*numData * numSym * Tx * Nbits,1);
-
+%data = randi([0 1],InputBlockSize* nframes,1);
+data = randi([0 1],InputBlockSize,1);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -98,13 +107,35 @@ data = randi([0 1],nframes*numData * numSym * Tx * Nbits,1);
 for idx = 1:length(EbNo)
     reset(errorRate)
     
-    %%%% Using EbNo value from here to compute noise variance %%%
+    % Reshape bit array into LDPC convenient format
+    N1 = InputBlockSize/K;
+    TransData = reshape(data,K,N1);
+    EncData = zeros(K/R,N1);
+    
+    % Loop encode LDPC
+    for LDPCframe = 1:N1
+        EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
+    end
+    
+    % Reshape for OFDM
+    N2 = OutputBlockSize/Nofdm;
+    ofdmInput = reshape(EncData,Nofdm,N2);
+    ofdmOutput = zeros(Nofdm,N2);
+    
+    % Using EbNo value from here to compute noise variance
     Demod.Variance = 10^(-EbNo(idx)/10);
-    for k = 1:nframes
-        % Find row indices for kth OFDM frame
-        indData = (k-1)*numData*numSym*Tx*Nbits+1:k*numData*numSym*Tx*Nbits;
+    
+    for k = 1:N2
+%       % Find row indices for kth OFDM frame
+%         indData = (k-1)*Nofdm+1:k*Nofdm;
         
-        modData = Mod(data(indData));
+        % Modulating the data
+        modData = Mod(ofdmInput(:,k));
+%         size(modData)
+%         numData
+%         numSym
+%         Tx
+%         numData*numSym*Tx
         modData = reshape(modData,numData,numSym,Tx);
         
         % Generate pilot symbols
@@ -129,17 +160,33 @@ for idx = 1:length(EbNo)
         RxOFDM = reshape(receivedOFDMData, numData, Tx);
         RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
         
-        %Caution : Displaying the constellation makes the code very slow.
-        constdiag(RxOFDMEst(:));
+        %%Caution : Displaying the constellation makes the code very slow.
+        %constdiag(RxOFDMEst(:));
         
 
         % Demodulate QPSK data
-        receivedData = Demod(RxOFDMEst(:));
+        % receivedData 
+        ofdmOutput(:,k) = Demod(RxOFDMEst(:));
 
-        % Compute error statistics
-        dataTmp = data(indData);
-        BER(:,idx) = errorRate(dataTmp(:),receivedData);
+%         % Compute error statistics
+%         dataTmp = data(:,k);
+%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
+    
+    % Reshape Double array into LDPC convenient format
+    RecData = reshape(ofdmOutput,K/R,N1);
+    DecData = zeros(K,N1);
+    
+    % Loop encode LDPC
+    for LDPCframe = 1:N1
+        DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
+    end
+    
+    % Reshape bit block into array
+    OutData = reshape(DecData,InputBlockSize,1);
+    
+    % Compute error statistics
+    BER(:,idx) = errorRate(data,OutData);
     
     % Print & plot stats
     fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
