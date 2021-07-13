@@ -6,19 +6,23 @@
 close all; clear; clc;
 
 % initialize modulators
-Mod = comm.QPSKModulator;
-Demod = comm.QPSKDemodulator;
+Mod = comm.QPSKModulator('BitInput', true);
+Demod = comm.QPSKDemodulator('BitOutput',true);
+%Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
 ModOrd = 4;
+Nbits = 2;
+
 
 % initialize channel coding objects
 ldpcEncoder = comm.LDPCEncoder;
 ldpcDecoder = comm.LDPCDecoder;
 K = 32400;
+R = 1/2;
 
 
 % Set up MIMO system
-Tx = 3;
-Rx = 3;
+Tx = 2;
+Rx = 2;
 f  = 900*10^6;
 d  = 1;
 c  = 3*10^8;
@@ -83,7 +87,8 @@ fig.Position = figposition([15 50 25 30]);
 %                            Input Data                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
+%data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
+data = randi([0 1],nframes*numData * numSym * Tx * Nbits,1);
 
 
 
@@ -92,9 +97,12 @@ data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for idx = 1:length(EbNo)
     reset(errorRate)
+    
+    %%%% Using EbNo value from here to compute noise variance %%%
+    Demod.Variance = 10^(-EbNo(idx)/10);
     for k = 1:nframes
         % Find row indices for kth OFDM frame
-        indData = (k-1)*numData*numSym*Tx+1:k*numData*numSym*Tx;
+        indData = (k-1)*numData*numSym*Tx*Nbits+1:k*numData*numSym*Tx*Nbits;
         
         modData = Mod(data(indData));
         modData = reshape(modData,numData,numSym,Tx);
@@ -122,7 +130,7 @@ for idx = 1:length(EbNo)
         RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
         
         %Caution : Displaying the constellation makes the code very slow.
-        %constdiag(RxOFDMEst(:));
+        constdiag(RxOFDMEst(:));
         
 
         % Demodulate QPSK data
