@@ -6,15 +6,15 @@
 close all; clear; clc;
 
 % initialize modulators
-%Mod = comm.QPSKModulator('BitInput', true);
-Mod = comm.BPSKModulator();
+Mod = comm.QPSKModulator('BitInput', true);
+%Mod = comm.BPSKModulator();
 
 % initialize demodulators
 %Demod = comm.QPSKDemodulator('BitOutput',true);
-%Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
-Demod = comm.BPSKDemodulator('DecisionMethod','Approximate log-likelihood ratio');
-ModOrd = 2;
-Nbits = 1;
+Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
+%Demod = comm.BPSKDemodulator('DecisionMethod','Approximate log-likelihood ratio');
+ModOrd = 4;
+Nbits = 2;
 
 
 % initialize channel coding objects
@@ -104,6 +104,7 @@ data = randi([0 1],InputBlockSize,1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Monte Carlo simulations                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tic;
 for idx = 1:length(EbNo)
     reset(errorRate)
     
@@ -161,7 +162,7 @@ for idx = 1:length(EbNo)
         RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
         
         %%Caution : Displaying the constellation makes the code very slow.
-        %constdiag(RxOFDMEst(:));
+        constdiag(RxOFDMEst(:));
         
 
         % Demodulate QPSK data
@@ -190,6 +191,7 @@ for idx = 1:length(EbNo)
     
     % Print & plot stats
     fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
+    toc;
     semilogy(ax,EbNo(1:idx), BER(1,1:idx), 'go');
     legend(ax,'2x2 MIMO-OFDM (2Tx, 2Rx)');
     drawnow;

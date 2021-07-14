@@ -7,8 +7,12 @@ close all; clear; clc;
 
 % initialize modulators
 Mod = comm.QPSKModulator('BitInput', true);
+%Mod = comm.BPSKModulator();
+
+% initialize demodulators
 %Demod = comm.QPSKDemodulator('BitOutput',true);
 Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
+%Demod = comm.BPSKDemodulator('DecisionMethod','Approximate log-likelihood ratio');
 ModOrd = 4;
 Nbits = 2;
 
@@ -48,19 +52,18 @@ numSym = ofdmModDim.DataInputSize(2);    % Number of OFDM symbols
 numPilots = ofdmModDim.PilotInputSize;
 LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 
-%showResourceMapping(ofdmMod)
+showResourceMapping(ofdmMod)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                        Simulation Parameters                           %
+%                        Parameters                                      %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-EbNo = 105;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
 OutputBlockSize = InputBlockSize/R;
 
+errorRate = comm.ErrorRate;
 constdiag = comm.ConstellationDiagram;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -75,7 +78,9 @@ data = randi([0 1],InputBlockSize,1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Monte Carlo simulations                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+tic;
+reset(errorRate)
+
 % Reshape bit array into LDPC convenient format
 N1 = InputBlockSize/K;
 TransData = reshape(data,K,N1);
@@ -92,7 +97,7 @@ ofdmInput = reshape(EncData,Nofdm,N2);
 ofdmOutput = zeros(Nofdm,N2);
 
 % Using EbNo value from here to compute noise variance
-Demod.Variance = 10^(-EbNo/10);
+Demod.Variance = 10^(-EbNo(idx)/10);
 
 for k = 1:N2
 %       % Find row indices for kth OFDM frame
@@ -117,7 +122,7 @@ for k = 1:N2
     chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
     % Pass OFDM signal through Rayleigh and AWGN channels
-    receivedSignal = awgn(dataOFDM*chGain,EbNo);
+    receivedSignal = awgn(dataOFDM*chGain,EbNo(idx));
 
     % Demodulate OFDM data
     [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
@@ -130,14 +135,18 @@ for k = 1:N2
     RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
 
     %%Caution : Displaying the constellation makes the code very slow.
-    %constdiag(RxOFDMEst(:));
+    constdiag(RxOFDMEst(:));
 
 
     % Demodulate QPSK data
     % receivedData 
     ofdmOutput(:,k) = Demod(RxOFDMEst(:));
-end
 
+%         % Compute error statistics
+%         dataTmp = data(:,k);
+%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
+end
+    
 % Reshape Double array into LDPC convenient format
 RecData = reshape(ofdmOutput,K/R,N1);
 DecData = zeros(K,N1);
@@ -151,8 +160,9 @@ end
 OutData = reshape(DecData,InputBlockSize,1);
 
 % Compute error statistics
-BER = sum(data~=OutData)/InputBlockSize
+BER = errorRate(data,OutData)
     
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
