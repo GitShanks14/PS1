@@ -55,42 +55,16 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 showResourceMapping(ofdmMod)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                        Simulation Parameters                           %
+%                        Parameters                                      %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-EbNo = 0:5:90;
-nframes = 10000;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
 OutputBlockSize = InputBlockSize/R;
 
 errorRate = comm.ErrorRate;
-
-% Defining the matrix that contains BER information
-BER  = zeros(3,length(EbNo));
 constdiag = comm.ConstellationDiagram;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                              Plotting                                  %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-fig = figure;
-grid on;
-ax = fig.CurrentAxes;
-hold(ax,'on');
-ax.YScale = 'log';
-xlim(ax,[EbNo(1), EbNo(end)]);
-ylim(ax,[1e-4 1]);
-xlabel(ax,'Eb/No (dB)');
-ylabel(ax,'BER');
-fig.NumberTitle = 'off';
-fig.Renderer = 'zbuffer';
-fig.Name = 'BER vs. Eb/No';
-title(ax,'Error rate vs. Energy per symbol');
-set(fig, 'DefaultLegendAutoUpdate', 'off');
-fig.Position = figposition([15 50 25 30]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                            Input Data                                  %
@@ -105,103 +79,89 @@ data = randi([0 1],InputBlockSize,1);
 %                       Monte Carlo simulations                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
-for idx = 1:length(EbNo)
-    reset(errorRate)
-    
-    % Reshape bit array into LDPC convenient format
-    N1 = InputBlockSize/K;
-    TransData = reshape(data,K,N1);
-    EncData = zeros(K/R,N1);
-    
-    % Loop encode LDPC
-    for LDPCframe = 1:N1
-        EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
-    end
-    
-    % Reshape for OFDM
-    N2 = OutputBlockSize/Nofdm;
-    ofdmInput = reshape(EncData,Nofdm,N2);
-    ofdmOutput = zeros(Nofdm,N2);
-    
-    % Using EbNo value from here to compute noise variance
-    Demod.Variance = 10^(-EbNo(idx)/10);
-    
-    for k = 1:N2
+reset(errorRate)
+
+% Reshape bit array into LDPC convenient format
+N1 = InputBlockSize/K;
+TransData = reshape(data,K,N1);
+EncData = zeros(K/R,N1);
+
+% Loop encode LDPC
+for LDPCframe = 1:N1
+    EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
+end
+
+% Reshape for OFDM
+N2 = OutputBlockSize/Nofdm;
+ofdmInput = reshape(EncData,Nofdm,N2);
+ofdmOutput = zeros(Nofdm,N2);
+
+% Using EbNo value from here to compute noise variance
+Demod.Variance = 10^(-EbNo(idx)/10);
+
+for k = 1:N2
 %       % Find row indices for kth OFDM frame
 %         indData = (k-1)*Nofdm+1:k*Nofdm;
-        
-        % Modulating the data
-        modData = Mod(ofdmInput(:,k));
+
+    % Modulating the data
+    modData = Mod(ofdmInput(:,k));
 %         size(modData)
 %         numData
 %         numSym
 %         Tx
 %         numData*numSym*Tx
-        modData = reshape(modData,numData,numSym,Tx);
-        
-        % Generate pilot symbols
-        PD = complex(rand(numPilots),rand(numPilots));
+    modData = reshape(modData,numData,numSym,Tx);
 
-        % Modulate symbols using OFDM
-        dataOFDM = ofdmMod(modData,PD);
+    % Generate pilot symbols
+    PD = complex(rand(numPilots),rand(numPilots));
 
-        % Create flat, i.i.d., Rayleigh fading channel
-        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
+    % Modulate symbols using OFDM
+    dataOFDM = ofdmMod(modData,PD);
 
-        % Pass OFDM signal through Rayleigh and AWGN channels
-        receivedSignal = awgn(dataOFDM*chGain,EbNo(idx));
+    % Create flat, i.i.d., Rayleigh fading channel
+    chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
-        % Demodulate OFDM data
-        [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
-        
-        % Channel estimation :
-        ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD);
-        
-        % Channel inversion
-        RxOFDM = reshape(receivedOFDMData, numData, Tx);
-        RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
-        
-        %%Caution : Displaying the constellation makes the code very slow.
-        constdiag(RxOFDMEst(:));
-        
+    % Pass OFDM signal through Rayleigh and AWGN channels
+    receivedSignal = awgn(dataOFDM*chGain,EbNo(idx));
 
-        % Demodulate QPSK data
-        % receivedData 
-        ofdmOutput(:,k) = Demod(RxOFDMEst(:));
+    % Demodulate OFDM data
+    [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
+
+    % Channel estimation :
+    ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD);
+
+    % Channel inversion
+    RxOFDM = reshape(receivedOFDMData, numData, Tx);
+    RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
+
+    %%Caution : Displaying the constellation makes the code very slow.
+    constdiag(RxOFDMEst(:));
+
+
+    % Demodulate QPSK data
+    % receivedData 
+    ofdmOutput(:,k) = Demod(RxOFDMEst(:));
 
 %         % Compute error statistics
 %         dataTmp = data(:,k);
 %         BER(:,idx) = errorRate(dataTmp(:),receivedData);
-    end
+end
     
-    % Reshape Double array into LDPC convenient format
-    RecData = reshape(ofdmOutput,K/R,N1);
-    DecData = zeros(K,N1);
-    
-    % Loop encode LDPC
-    for LDPCframe = 1:N1
-        DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
-    end
-    
-    % Reshape bit block into array
-    OutData = reshape(DecData,InputBlockSize,1);
-    
-    % Compute error statistics
-    BER(:,idx) = errorRate(data,OutData);
-    
-    % Print & plot stats
-    fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
-    toc;
-    semilogy(ax,EbNo(1:idx), BER(1,1:idx), 'go');
-    legend(ax,'2x2 MIMO-OFDM (2Tx, 2Rx)');
-    drawnow;
+% Reshape Double array into LDPC convenient format
+RecData = reshape(ofdmOutput,K/R,N1);
+DecData = zeros(K,N1);
+
+% Loop encode LDPC
+for LDPCframe = 1:N1
+    DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
 end
 
-% Plot line fit
-fitBER = berfit(EbNo, BER(1,:));
-semilogy(ax,EbNo, fitBER, 'g');
-hold(ax,'off');
+% Reshape bit block into array
+OutData = reshape(DecData,InputBlockSize,1);
 
+% Compute error statistics
+BER = errorRate(data,OutData)
+    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
