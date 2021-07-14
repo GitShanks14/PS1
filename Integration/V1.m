@@ -4,6 +4,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all; clear; clc;
+tic;
 
 % initialize modulators
 Mod = comm.QPSKModulator('BitInput', true);
@@ -28,6 +29,7 @@ d  = 1;
 c  = 3*10^8;
 
 FSPL = c/(4*pi*d*f);
+%FSPL = 1;
 
 % Set up OFDM system
 FFTlen = 64;
@@ -51,11 +53,10 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 %showResourceMapping(ofdmMod)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                        Simulation Parameters                           %
+%                            Input Data                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-EbNo = 105;
+EbNo = 100;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
@@ -63,96 +64,134 @@ OutputBlockSize = InputBlockSize/R;
 
 constdiag = comm.ConstellationDiagram;
 
+ipath = '/Users/sashank/Documents/MATLAB/Programs/PS/Learning/video.mp4';
+opath = '/Users/sashank/Documents/MATLAB/Programs/PS/Learning/output.mp4';
+
+fileID = fopen(ipath,'r');
+fileID2 = fopen(opath,'w');
+
+frewind(fileID);
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                            Input Data                                  %
+%                       Transmission loop                                %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
-%data = randi([0 1],InputBlockSize* nframes,1);
-data = randi([0 1],InputBlockSize,1);
+% Read from file
+%sub = fread(fileID, InputBlockSize, '*ubit1', 'ieee-le');    
+sub = fread(fileID, '*ubit1', 'ieee-le');    
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                       Monte Carlo simulations                          %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-% Reshape bit array into LDPC convenient format
+% Zero padding
+p = InputBlockSize - rem(length(sub), InputBlockSize);
+if(p == InputBlockSize)
+    p = 0;
+end
+sub(end+1:end+p)=0;
+
+% Reshaping as frames
+NFrames = size(sub);
+NFrames = NFrames(1)/InputBlockSize;
+
+data = reshape(sub,InputBlockSize,NFrames);
+OutData = zeros(size(data));
+
+% Calculating convenient dimensions
 N1 = InputBlockSize/K;
-TransData = reshape(data,K,N1);
-EncData = zeros(K/R,N1);
-
-% Loop encode LDPC
-for LDPCframe = 1:N1
-    EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
-end
-
-% Reshape for OFDM
 N2 = OutputBlockSize/Nofdm;
-ofdmInput = reshape(EncData,Nofdm,N2);
-ofdmOutput = zeros(Nofdm,N2);
 
-% Using EbNo value from here to compute noise variance
-Demod.Variance = 10^(-EbNo/10);
+for i = 1:NFrames
+    % Reshape bit array into LDPC convenient format
+    TransData = reshape(data(:,i),K,N1);
+    EncData = zeros(K/R,N1);
 
-for k = 1:N2
-%       % Find row indices for kth OFDM frame
-%         indData = (k-1)*Nofdm+1:k*Nofdm;
+    % Loop encode LDPC
+    for LDPCframe = 1:N1
+        EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
+    end
 
-    % Modulating the data
-    modData = Mod(ofdmInput(:,k));
-%         size(modData)
-%         numData
-%         numSym
-%         Tx
-%         numData*numSym*Tx
-    modData = reshape(modData,numData,numSym,Tx);
+    % Reshape for OFDM
+    ofdmInput = reshape(EncData,Nofdm,N2);
+    ofdmOutput = zeros(Nofdm,N2);
 
-    % Generate pilot symbols
-    PD = complex(rand(numPilots),rand(numPilots));
+    % Using EbNo value from here to compute noise variance
+    Demod.Variance = 10^(-EbNo/10);
 
-    % Modulate symbols using OFDM
-    dataOFDM = ofdmMod(modData,PD);
+    for k = 1:N2
+        % Modulating the data
+        modData = Mod(ofdmInput(:,k));
+        modData = reshape(modData,numData,numSym,Tx);
 
-    % Create flat, i.i.d., Rayleigh fading channel
-    chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
+        % Generate pilot symbols
+        PD = complex(rand(numPilots),rand(numPilots));
 
-    % Pass OFDM signal through Rayleigh and AWGN channels
-    receivedSignal = awgn(dataOFDM*chGain,EbNo);
+        % Modulate symbols using OFDM
+        dataOFDM = ofdmMod(modData,PD);
 
-    % Demodulate OFDM data
-    [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
+        % Create flat, i.i.d., Rayleigh fading channel
+        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
-    % Channel estimation :
-    ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD);
+        % Pass OFDM signal through Rayleigh and AWGN channels
+        receivedSignal = awgn(dataOFDM*chGain,EbNo);
 
-    % Channel inversion
-    RxOFDM = reshape(receivedOFDMData, numData, Tx);
-    RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
+        % Demodulate OFDM data
+        [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
 
-    %%Caution : Displaying the constellation makes the code very slow.
-    %constdiag(RxOFDMEst(:));
+        % Channel estimation :
+        ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD);
+
+        % Channel inversion
+        RxOFDM = reshape(receivedOFDMData, numData, Tx);
+        RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
+
+        %%Caution : Displaying the constellation makes the code very slow.
+        %constdiag(RxOFDMEst(:));
 
 
-    % Demodulate QPSK data
-    % receivedData 
-    ofdmOutput(:,k) = Demod(RxOFDMEst(:));
+        % Demodulate QPSK data
+        % receivedData 
+        ofdmOutput(:,k) = Demod(RxOFDMEst(:));
+    end
+
+    % Reshape Double array into LDPC convenient format
+    RecData = reshape(ofdmOutput,K/R,N1);
+    DecData = zeros(K,N1);
+
+    % Loop encode LDPC
+    for LDPCframe = 1:N1
+        DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
+    end
+
+    % Reshape bit block into array
+    OutData(:,i) = reshape(DecData,InputBlockSize,1);
 end
 
-% Reshape Double array into LDPC convenient format
-RecData = reshape(ofdmOutput,K/R,N1);
-DecData = zeros(K,N1);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Winding up                                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Loop encode LDPC
-for LDPCframe = 1:N1
-    DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
-end
+% Reshape into vector
+[L, F] = size(OutData);
+OutData = reshape(OutData, L*F, 1);
 
-% Reshape bit block into array
-OutData = reshape(DecData,InputBlockSize,1);
+[L, F] = size(data);
+data = reshape(data, L*F, 1);
+
+% Store in file
+fwrite(fileID2, OutData,'*ubit1');
 
 % Compute error statistics
-BER = sum(data~=OutData)/InputBlockSize
-    
+BER = sum(data~=OutData)/InputBlockSize;
+BE  = sum(data~=OutData);
+
+disp(BER);
+disp(BE);
+
+% Closing files
+fclose(fileID);
+fclose(fileID2);
+
+toc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
