@@ -29,7 +29,7 @@ d  = 1;
 c  = 3*10^8;
 
 FSPL = c/(4*pi*d*f);
-FSPL = 1;
+%FSPL = 1;
 
 % Set up OFDM system
 FFTlen = 64;
@@ -56,7 +56,7 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 %                            Input Data                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-EbNo = 30;
+EbNo = 100;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
@@ -100,6 +100,9 @@ OutData = zeros(size(data));
 N1 = InputBlockSize/K;
 N2 = OutputBlockSize/Nofdm;
 
+Gains = ones(Rx,Tx,1);
+gctr = 2;
+
 for i = 1:NFrames
     % Reshape bit array into LDPC convenient format
     TransData = reshape(data(:,i),K,N1);
@@ -129,7 +132,10 @@ for i = 1:NFrames
         dataOFDM = ofdmMod(modData,PD);
 
         % Create flat, i.i.d., Rayleigh fading channel
-        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
+        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2);
+        Gains(:,:,gctr) = chGain;
+        gctr = gctr + 1;
+        chGain = chGain * FSPL;
 
         % Pass OFDM signal through Rayleigh and AWGN channels
         receivedSignal = awgn(dataOFDM*chGain,EbNo);
@@ -181,11 +187,42 @@ data = reshape(data, L*F, 1);
 fwrite(fileID2, OutData,'*ubit1');
 
 % Compute error statistics
-BER = sum(data~=OutData)/InputBlockSize;
+Errors = data~=OutData;
+BER = sum(data~=OutData)/(L*F);
 BE  = sum(data~=OutData);
 
 disp(BER);
 disp(BE);
+
+% Burst error detector
+Nf = Nofdm/Rx;
+filter = 1/Nf*ones(Nf,1);
+spikes = conv(Errors,filter);
+plot(spikes);
+
+
+
+% Plotting Rayleigh fading
+S = size(Gains);
+S = S(3);
+
+RayFade = 20.*log10(abs(Gains));
+DeepFade = RayFade < -30;
+
+figure;
+hold on
+plot(reshape(RayFade(1,1,:),S,1))
+plot(reshape(RayFade(1,2,:),S,1))
+plot(reshape(RayFade(2,1,:),S,1))
+plot(reshape(RayFade(2,2,:),S,1))
+plot(-30*ones(S,1))
+
+figure;
+hold on
+plot(reshape(DeepFade(1,1,:),S,1))
+plot(reshape(DeepFade(1,2,:),S,1))
+plot(reshape(DeepFade(2,1,:),S,1))
+plot(reshape(DeepFade(2,2,:),S,1))
 
 % Closing files
 fclose(fileID);
