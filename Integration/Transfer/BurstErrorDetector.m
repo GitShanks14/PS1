@@ -5,7 +5,8 @@
 close all; clc;
 
 % Set the Deep Fade Threshold ( in dB ) :
-DeepFadeThreshold = -20;
+DeepFadeThreshold1 = -40;
+DeepFadeThreshold2 = -20;
 
 S = size(Gains);
 S = S(3);
@@ -13,30 +14,44 @@ S = S(3);
 RayFade = 20.*log10(abs(Gains));
 
 figure('Name','Rayleigh fading');
-hold on
-plot(reshape(RayFade(1,1,:),S,1))
-plot(reshape(RayFade(1,2,:),S,1))
-plot(reshape(RayFade(2,1,:),S,1))
-plot(reshape(RayFade(2,2,:),S,1))
-plot(-30*ones(S,1))
+for i = 1:Tx
+    for j = 1:Rx
+        subplot(Tx,Rx,(i-1)*Rx+j)
+        plot(reshape(RayFade(i,j,:),S,1))
+        title(sprintf('Subplot %d: Fading of link from Tx %d to Rx %d',(i-1)*Rx+j,i,j));
+    end
+end
 
-DeepFade = RayFade < DeepFadeThreshold;
-%FullFade = RayFade(1,1,:).*RayFade(1,2,:).*RayFade(2,1,:).*RayFade(2,2,:);
-FullFade = DeepFade(1,1,:).*DeepFade(1,2,:).*DeepFade(2,1,:).*DeepFade(2,2,:);
+DeepFade = RayFade < DeepFadeThreshold1;
+
+figure('Name','DeepFade');
+for i = 1:Tx
+    for j = 1:Rx
+        subplot(Tx,Rx,(i-1)*Rx+j)
+        plot(reshape(DeepFade(i,j,:),S,1))
+        title(sprintf('Subplot %d: Deep Fading of link from Tx %d to Rx %d',(i-1)*Rx+j,i,j));
+    end
+end
+
+FullFade = ones(size(DeepFade(1,1,:)));
+for i = 1:Tx
+    for j = 1:Rx
+        FullFade = FullFade .* DeepFade(i,j,:);
+    end
+end
+
 FullFade = reshape(FullFade,S,1);
+% figure
+% plot(FullFade)
 
+
+DeepFade = RayFade < DeepFadeThreshold2;
 R1Fail = reshape(DeepFade(1,1,:).*DeepFade(1,2,:),S,1);
 R2Fail = reshape(DeepFade(2,1,:).*DeepFade(2,2,:),S,1);
 
 T1Fail = reshape(DeepFade(1,1,:).*DeepFade(2,1,:),S,1);
 T2Fail = reshape(DeepFade(1,2,:).*DeepFade(2,2,:),S,1);
 
-figure('Name','DeepFade');
-hold on
-plot(reshape(DeepFade(1,1,:),S,1))
-plot(reshape(DeepFade(1,2,:),S,1))
-plot(reshape(DeepFade(2,1,:),S,1))
-plot(reshape(DeepFade(2,2,:),S,1))
 
 figure('Name','Link Failures')
 %plot(FullFade)

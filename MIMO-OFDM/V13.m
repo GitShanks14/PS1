@@ -4,12 +4,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 close all; clear; clc;
-tic;
 
 % initialize modulators
 Mod = comm.QPSKModulator('BitInput', true);
+%Mod = comm.BPSKModulator();
+
+% initialize demodulators
 %Demod = comm.QPSKDemodulator('BitOutput',true);
 Demod = comm.QPSKDemodulator('BitOutput',true,'DecisionMethod','Approximate log-likelihood ratio');
+%Demod = comm.BPSKDemodulator('DecisionMethod','Approximate log-likelihood ratio');
 ModOrd = 4;
 Nbits = 2;
 
@@ -24,22 +27,29 @@ R = 1/2;
 % Set up MIMO system
 Tx = 2;
 Rx = 2;
+
 f  = 900*10^6;
 d  = 1;
 c  = 3*10^8;
-
 FSPL = c/(4*pi*d*f);
-%FSPL = 1;
 
 % Set up OFDM system
 FFTlen = 64;
-NumPivots = 2;
-guard = [1;1];
+NumPivots = 4;
+guard = [6;6];
 PCidx = SetPCidx ( NumPivots, Tx, guard, FFTlen );
+PulseShaping = true;
+WindowLength = 8;
 
 ofdmMod = comm.OFDMModulator('FFTLength',FFTlen,'PilotInputPort',true,...
     'PilotCarrierIndices',PCidx,'InsertDCNull',true,...
-    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', 16,'NumGuardBandCarriers',guard);
+    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', 16,'NumGuardBandCarriers',guard,...
+    'Windowing',PulseShaping); %,'WindowLength',WindowLength
+
+if PulseShaping == true
+    ofdmMod.WindowLength = WindowLength;
+end
+
 
 ofdmDemod = comm.OFDMDemodulator(ofdmMod);
 ofdmDemod.NumReceiveAntennas = Rx;
@@ -53,184 +63,163 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 %showResourceMapping(ofdmMod)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                            Input Data                                  %
+%                        Simulation Parameters                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-EbNo = 100;
+SNR = 50:5:90;
+%nframes = 10000;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
 OutputBlockSize = InputBlockSize/R;
 
+errorRate = comm.ErrorRate;
+
+% Defining the matrix that contains BER information
+BER  = zeros(3,length(SNR));
 constdiag = comm.ConstellationDiagram;
-
-ipath = '/Users/sashank/Documents/MATLAB/Programs/PS/Learning/video.mp4';
-opath = '/Users/sashank/Documents/MATLAB/Programs/PS/Learning/output.mp4';
-
-fileID = fopen(ipath,'r');
-fileID2 = fopen(opath,'w');
-
-frewind(fileID);
-
+%scope = dsp.SpectrumAnalyzer;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                       Transmission loop                                %
+%                              Plotting                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Read from file
-%sub = fread(fileID, InputBlockSize, '*ubit1', 'ieee-le');    
+fig = figure;
+grid on;
+ax = fig.CurrentAxes;
+hold(ax,'on');
+ax.YScale = 'log';
+xlim(ax,[SNR(1), SNR(end)]);
+ylim(ax,[1e-4 1]);
+xlabel(ax,'Eb/No (dB)');
+ylabel(ax,'BER');
+fig.NumberTitle = 'off';
+fig.Renderer = 'zbuffer';
+fig.Name = 'BER vs. Eb/No';
+title(ax,'Error rate vs. Energy per symbol');
+set(fig, 'DefaultLegendAutoUpdate', 'off');
+fig.Position = figposition([15 50 25 30]);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            Input Data                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%data = randi([0 ModOrd-1],nframes*numData * numSym * Tx,1);
+%data = randi([0 1],InputBlockSize* nframes,1);
+data = randi([0 1],InputBlockSize,1);
+
+RxSignalFull = zeros(80,2);
+TxSignalFull = zeros(80,2);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Monte Carlo simulations                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
-sub = fread(fileID, '*ubit1', 'ieee-le');    
-toc;
-
-
-% Zero padding
-p = InputBlockSize - rem(length(sub), InputBlockSize);
-if(p == InputBlockSize)
-    p = 0;
-end
-sub(end+1:end+p)=0;
-
-% Reshaping as frames
-NFrames = size(sub);
-NFrames = NFrames(1)/InputBlockSize;
-
-data = reshape(sub,InputBlockSize,NFrames);
-OutData = zeros(size(data));
-
-% Calculating convenient dimensions
-N1 = InputBlockSize/K;
-N2 = OutputBlockSize/Nofdm;
-
-Gains = ones(Rx,Tx,1);
-gctr = 2;
-
-for i = 1:NFrames
+for idx = 1:length(SNR)
+    reset(errorRate)
+    
     % Reshape bit array into LDPC convenient format
-    TransData = reshape(data(:,i),K,N1);
+    N1 = InputBlockSize/K;
+    TransData = reshape(data,K,N1);
     EncData = zeros(K/R,N1);
-
+    
     % Loop encode LDPC
     for LDPCframe = 1:N1
         EncData(:,LDPCframe) = Enc(TransData(:,LDPCframe));
     end
-
+    
     % Reshape for OFDM
+    N2 = OutputBlockSize/Nofdm;
     ofdmInput = reshape(EncData,Nofdm,N2);
     ofdmOutput = zeros(Nofdm,N2);
-
+    
     % Using EbNo value from here to compute noise variance
-    Demod.Variance = 10^(-EbNo/10);
-
+    variance = 10^(-SNR(idx)/10)/2;
+    Demod.Variance = variance;
+    stdev = sqrt(variance);
+    
     for k = 1:N2
+%       % Find row indices for kth OFDM frame
+%         indData = (k-1)*Nofdm+1:k*Nofdm;
+        
         % Modulating the data
         modData = Mod(ofdmInput(:,k));
+%         size(modData)
+%         numData
+%         numSym
+%         Tx
+%         numData*numSym*Tx
         modData = reshape(modData,numData,numSym,Tx);
-
+        
         % Generate pilot symbols
         PD = complex(rand(numPilots),rand(numPilots));
 
         % Modulate symbols using OFDM
         dataOFDM = ofdmMod(modData,PD);
+        %TxSignalFull = [TxSignalFull;dataOFDM];
 
         % Create flat, i.i.d., Rayleigh fading channel
-        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2);
-        Gains(:,:,gctr) = chGain;
-        gctr = gctr + 1;
-        chGain = chGain * FSPL;
+        chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
         % Pass OFDM signal through Rayleigh and AWGN channels
-        receivedSignal = awgn(dataOFDM*chGain,EbNo);
+        %receivedSignal = awgn(dataOFDM*chGain,SNR(idx));
+        receivedSignal = dataOFDM*chGain + stdev*randn(LenFrame,Rx);
+        
 
         % Demodulate OFDM data
         [receivedOFDMData,RPD] = ofdmDemod(receivedSignal);
-
+        
         % Channel estimation :
         ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD);
-
+        
         % Channel inversion
         RxOFDM = reshape(receivedOFDMData, numData, Tx);
-        RxOFDMEst = reshape((ChGainEst.' \ RxOFDM.').', numData,1,Rx);
-
+        RxOFDMEst = reshape(LMMSEInversion(Tx,Rx,chGain,RxOFDM,variance), numData,1,Rx);
+        
         %%Caution : Displaying the constellation makes the code very slow.
         %constdiag(RxOFDMEst(:));
-
+        
 
         % Demodulate QPSK data
         % receivedData 
         ofdmOutput(:,k) = Demod(RxOFDMEst(:));
-    end
 
+%         % Compute error statistics
+%         dataTmp = data(:,k);
+%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
+    end
+    
     % Reshape Double array into LDPC convenient format
     RecData = reshape(ofdmOutput,K/R,N1);
     DecData = zeros(K,N1);
-
+    
     % Loop encode LDPC
     for LDPCframe = 1:N1
         DecData(:,LDPCframe) = Dec(RecData(:,LDPCframe));
     end
-
+    
     % Reshape bit block into array
-    OutData(:,i) = reshape(DecData,InputBlockSize,1);
+    OutData = reshape(DecData,InputBlockSize,1);
+    
+    % Compute error statistics
+    BER(:,idx) = errorRate(data,OutData);
+    
+    % Print & plot stats
+    %scope(RxSignalFull)
+    RxSignalFull = zeros(80,2);
+    fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
+    toc;
+    semilogy(ax,SNR(1:idx), BER(1,1:idx), 'go');
+    legend(ax,'2x2 MIMO-OFDM (2Tx, 2Rx)');
+    drawnow;
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                       Winding up                                        %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Plot line fit
+fitBER = berfit(SNR, BER(1,:));
+semilogy(ax,SNR, fitBER, 'g');
+hold(ax,'off');
 
-% Reshape into vector
-[L, F] = size(OutData);
-OutData = reshape(OutData, L*F, 1);
 
-[L, F] = size(data);
-data = reshape(data, L*F, 1);
-
-% Store in file
-fwrite(fileID2, OutData,'*ubit1');
-
-% Compute error statistics
-Errors = data~=OutData;
-BER = sum(data~=OutData)/(L*F);
-BE  = sum(data~=OutData);
-
-disp(BER);
-disp(BE);
-
-% % Burst error detector
-% Nf = Nofdm/Rx;
-% filter = 1/Nf*ones(Nf,1);
-% spikes = conv(Errors,filter);
-% plot(spikes);
-% 
-% 
-% 
-% % Plotting Rayleigh fading
-% S = size(Gains);
-% S = S(3);
-% 
-% RayFade = 20.*log10(abs(Gains));
-% DeepFade = RayFade < -30;
-% 
-% figure;
-% hold on
-% plot(reshape(RayFade(1,1,:),S,1))
-% plot(reshape(RayFade(1,2,:),S,1))
-% plot(reshape(RayFade(2,1,:),S,1))
-% plot(reshape(RayFade(2,2,:),S,1))
-% plot(-30*ones(S,1))
-% 
-% figure;
-% hold on
-% plot(reshape(DeepFade(1,1,:),S,1))
-% plot(reshape(DeepFade(1,2,:),S,1))
-% plot(reshape(DeepFade(2,1,:),S,1))
-% plot(reshape(DeepFade(2,2,:),S,1))
-
-% Closing files
-fclose(fileID);
-fclose(fileID2);
-
-toc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -257,3 +246,21 @@ function ChGainEst = ChannelEstimation(Tx,Rx,PD,RPD)
         end
     end
 end
+
+function SymbolEst = LSEInversion(~,~,H,RxOFDM,~)
+ 
+    SymbolEst = RxOFDM/H;
+    
+end
+
+function SymbolEst = LMMSEInversion(Tx,~,H,RxOFDM,variance)
+
+    SymbolEst = RxOFDM * H' / (H*H'+variance*eye(Tx,Tx));
+    
+end
+
+
+
+
+
+
