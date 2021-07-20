@@ -17,7 +17,7 @@ Nbits = 2;
 
 % initialize channel coding objects
 Enc = comm.LDPCEncoder;
-Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 15);
+Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 50);
 K = 32400;
 R = 1/2;
 
@@ -57,7 +57,7 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 %                            Input Data                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-EbNo = 105;
+EbNo = 100;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
@@ -67,10 +67,10 @@ OutputBlockSize = InputBlockSize/R;
 N1 = InputBlockSize/K;
 N2 = OutputBlockSize/Nofdm;
 
-constdiag = comm.ConstellationDiagram;
+%constdiag = comm.ConstellationDiagram;
 
-ipath = 'dtest.mkv';
-opath = 'dout.mkv';
+ipath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoIn.mkv';
+opath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoOut.mkv';
 
 fileID = fopen(ipath,'r');
 fileID2 = fopen(opath,'w');
@@ -87,6 +87,8 @@ frewind(fileID);
 %sub = fread(fileID, '*ubit1', 'ieee-le');    
 
 streaming = true;
+vidopen = false;
+buf = 0;
 
 Gains = ones(Rx,Tx,1);
 gctr = 2;
@@ -101,9 +103,9 @@ while streaming
     if((newpos-current) ~= (InputBlockSize/8))
         t0 = clock;
         % Wait for the source to catch up
-        while etime(clock, t0) < 5
+        while etime(clock, t0) < 10
             fseek(fileID,-(newpos-current),'cof');
-            pause(0.05);
+            pause(0.025);
             sub = fread(fileID, InputBlockSize, '*ubit1', 'ieee-le');
             newpos = ftell(fileID);
 
@@ -114,7 +116,7 @@ while streaming
         end
 
         % If read fails. ie if timeout.
-        if etime(clock, t0) >= 5
+        if etime(clock, t0) >= 10
             streaming = false;
             % Zero padding
             p = InputBlockSize - rem(length(sub), InputBlockSize);
@@ -126,6 +128,10 @@ while streaming
         end
     end
     data = sub;
+    
+    if(isempty(data))
+        data = zeros(InputBlockSize, 1);
+    end
     
     % Reshape bit array into LDPC convenient format
     TransData = reshape(data,K,N1);
@@ -204,7 +210,26 @@ while streaming
 
     % Reshape bit block into array
     OutData = reshape(DecData,InputBlockSize,1);
+    
+    %output buffer
+%     bufSize = 3;
+%     if(buf == 0)
+%         outBuf = zeros(InputBlockSize*bufSize, 1);
+%     end
+%     i1 = (buf*InputBlockSize)+1;
+%     i2 = (buf+1)*(InputBlockSize);
+%     outBuf(i1:i2, 1) = OutData;
+%     buf = buf + 1;
+%     if(buf == bufSize)
+%         fwrite(fileID2, outBuf,'*ubit1');
+%         buf = 0;
+%     end
+    
     fwrite(fileID2, OutData,'*ubit1');
+%     if(~vidopen)
+%         winopen 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoOut.mkv';
+%         vidopen = true;
+%     end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -215,6 +240,7 @@ end
 fclose(fileID);
 fclose(fileID2);
 
+%toc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Function definitions                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
