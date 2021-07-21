@@ -14,3 +14,13 @@ V13 onwards, the system uses SNR and not Eb/No.
 V14 re-introduced QAM into the system. QAM was discontinued when the system started using scripts instead of Simulink models. 
 
 ## Features
+1. Can switch between BPSK, QPSK and M-QAM by just specifying modulation order. 
+2. Can specify the number of transmitter and receiver antennas ( square systems only ).
+3. Can set the centre frequency and distance to model path loss.
+4. Can change all parameters of the OFDM system : 
+a. Number of subcarriers
+b. Number of Pilot carriers
+c. Number of left and right guard carriers
+d. Toggle Pulse Shaping
+e. Set windowing length for Pulse Shaping
+f. Change Cyclic Prefix length

@@ -7,6 +7,10 @@ close all; clear; clc;
 
 % initialize Mod / Demod
 ModOrd = 16;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do not change. 
 Nbits = ceil(log2(ModOrd));
 defaultMod = false;
 
@@ -29,6 +33,7 @@ Dec = comm.LDPCDecoder;
 K = 32400;
 R = 1/2;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Set up MIMO system
 Tx = 2;
@@ -36,20 +41,25 @@ Rx = 2;
 
 f  = 900*10^6;
 d  = 1;
-c  = 3*10^8;
-FSPL = c/(4*pi*d*f);
 
 % Set up OFDM system
 FFTlen = 64;
-NumPivots = 4;
+NumPilots = 4;
 guard = [6;6];
-PCidx = SetPCidx ( NumPivots, Tx, guard, FFTlen );
+PCidx = SetPCidx ( NumPilots, Tx, guard, FFTlen );
 PulseShaping = true;
 WindowLength = 8;
+CPLength = 16;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DO NOT CHANGE
+c  = 3*10^8;
+FSPL = c/(4*pi*d*f);
 
 ofdmMod = comm.OFDMModulator('FFTLength',FFTlen,'PilotInputPort',true,...
     'PilotCarrierIndices',PCidx,'InsertDCNull',true,...
-    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', 16,'NumGuardBandCarriers',guard,...
+    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', CPLength,'NumGuardBandCarriers',guard,...
     'Windowing',PulseShaping); %,'WindowLength',WindowLength
 
 if PulseShaping == true
@@ -66,16 +76,21 @@ numSym = ofdmModDim.DataInputSize(2);    % Number of OFDM symbols
 numPilots = ofdmModDim.PilotInputSize;
 LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 
-%showResourceMapping(ofdmMod)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Displaying the carrier allocation :
+% showResourceMapping(ofdmMod)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                        Simulation Parameters                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% Set X axis range : 
 SNR = 50:5:90;
-%nframes = 10000;
-Nofdm = numData * numSym * Tx * Nbits;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DO NOT CHANGE anything from here till after the monte carlo simulator
+Nofdm = numData * numSym * Tx * Nbits;
 InputBlockSize = lcm(Nofdm,K);
 OutputBlockSize = InputBlockSize/R;
 
@@ -84,7 +99,6 @@ errorRate = comm.ErrorRate;
 % Defining the matrix that contains BER information
 BER  = zeros(3,length(SNR));
 constdiag = comm.ConstellationDiagram;
-%scope = dsp.SpectrumAnalyzer;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                              Plotting                                  %
@@ -167,7 +181,6 @@ for idx = 1:length(SNR)
         chGain = complex(randn(Rx,Tx),randn(Rx,Tx))/sqrt(2) * FSPL;
 
         % Pass OFDM signal through Rayleigh and AWGN channels
-        %receivedSignal = awgn(dataOFDM*chGain,SNR(idx));
         receivedSignal = dataOFDM*chGain + stdev*randn(LenFrame,Rx);
         
 
@@ -193,10 +206,6 @@ for idx = 1:length(SNR)
             'OutputType','approxllr','NoiseVariance',variance,...
             'UnitAveragePower',true );
         end
-
-%         % Compute error statistics
-%         dataTmp = data(:,k);
-%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
     
     % Reshape Double array into LDPC convenient format
@@ -215,8 +224,7 @@ for idx = 1:length(SNR)
     BER(:,idx) = errorRate(data,OutData);
     
     % Print & plot stats
-    %scope(RxSignalFull)
-    RxSignalFull = zeros(80,2);
+    % RxSignalFull = zeros(80,2);
     fprintf('\nSymbol error rate = %d from %d errors in %d symbols\n',BER(:,idx));
     toc;
     semilogy(ax,SNR(1:idx), BER(1,1:idx), 'go');
@@ -224,6 +232,7 @@ for idx = 1:length(SNR)
     drawnow;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Plot line fit
 fitBER = berfit(SNR, BER(1,:));
 semilogy(ax,SNR, fitBER, 'g');
