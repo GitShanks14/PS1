@@ -22,14 +22,12 @@ Run all the mainx.m files. <br/>
 Now, select the legend, the colours, the line type in plotter.m, and run the file.  <br/>
 The plot will be generated. <br/>
 
-
-
-
-
-
-
-
-
+As an example, the current grapher generates MQAM comparison. In order to use the scripts, 
+1. Discard all mainx.m scripts except for main1.m
+2. run init.m as described above
+3. Duplicate main1.m NScripts times, and implement your systems there. 
+4. Run all the mainx.m scripts. 
+5. Run plotter.m as described above. 
 
 Shortcomings of V3: <br/>
 1. A GUI could be implemented.
