@@ -18,9 +18,11 @@ V14 re-introduced QAM into the system. QAM was discontinued when the system star
 2. Can specify the number of transmitter and receiver antennas ( square systems only ).
 3. Can set the centre frequency and distance to model path loss.
 4. Can change all parameters of the OFDM system : 
-4. a. Number of subcarriers
-4. b. Number of Pilot carriers
-4. c. Number of left and right guard carriers
-4. d. Toggle Pulse Shaping
-4. e. Set windowing length for Pulse Shaping
-4. f. Change Cyclic Prefix length
+
+### OFDM System Parameters
+1. Number of subcarriers
+2. Number of Pilot carriers
+3. Number of left and right guard carriers
+4. Toggle Pulse Shaping
+5. Set windowing length for Pulse Shaping
+6. Change Cyclic Prefix length
