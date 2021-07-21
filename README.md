@@ -22,7 +22,7 @@ Faculty Mentor:   Dr. Rahul Singhal, Assistant Professor, BITS Pilani <br />
 This folder contains all the previous versions implemented along the way to the final implementation. The files in this folder can be used to plot the BER vs SNR performance of a system, after setting it's parameters. 
 
 ### Channel Coding : 
-Fill it up 
+This folder contains the intermediate versions of the different channel coding schemes implemented before finalizing one for the final system.
 
 ### Integration :
 This folder contains the intermediate versions of the integrated final products. 
