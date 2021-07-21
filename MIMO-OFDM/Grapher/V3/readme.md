@@ -2,13 +2,13 @@
 
 There are 3 key scripts in this folder : init.m, main1.m, plotter.m. <br/>
 the scripts are to be run in the follwing order : <br/>
-1.    init.m  <br/>
-2.1   main1.m <br/>
+1. init.m  <br/>
+2. main1.m <br/>
 .             <br/>
 .             <br/>
 .             <br/>
-2.n   mainn.m <br/>
-3.    plotter.m <br/>
+2. mainn.m <br/>
+3. plotter.m <br/>
 
 First run the init.m script. <br/>
 Set SNR to be the x axis elements that you want to generate the plot for. <br/>
