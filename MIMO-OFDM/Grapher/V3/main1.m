@@ -2,7 +2,7 @@
 % The purpose of this script is to vary Eb/No and plot variation of BER  %
 % for various systems                                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+clc;
 PlotNumber = 1;
 
 
