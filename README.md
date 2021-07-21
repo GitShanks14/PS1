@@ -16,3 +16,19 @@ Aditya Soni <br />
 ## Mentors: 
 Industry Mentor:  AEE Naveen Reddy, Executive Engineer, M.C.E.M.E. <br />
 Faculty Mentor:   Dr. Rahul Singhal, Assistant Professor, BITS Pilani <br />
+
+## Structure : 
+### MIMO-OFDM : 
+This folder contains all the previous versions implemented along the way to the final implementation. The files in this folder can be used to plot the BER vs SNR performance of a system, after setting it's parameters. 
+
+### Channel Coding : 
+Fill it up 
+
+### Integration :
+This folder contains the final versions of the integrated final products. The folder contains two subfolders, one for the code for file transfer, and the other for streaming. 
+
+### Utility : 
+This folder contains various useful scripts for the analysis of the system designed. Things such as the plotting of the OFDM spectrum alongside the resource allocation, detection and reasoning out of burst errors, and the plot based comparison of different systems can be done here. 
+
+
+note : All files with the file name containing "test", were meant for debugging purposes. 
