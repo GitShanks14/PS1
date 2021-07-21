@@ -25,7 +25,13 @@ This folder contains all the previous versions implemented along the way to the 
 Fill it up 
 
 ### Integration :
-This folder contains the final versions of the integrated final products. The folder contains two subfolders, one for the code for file transfer, and the other for streaming. 
+This folder contains the intermediate versions of the integrated final products. 
+
+### Streaming : 
+This folder contains the versions optimized for streaming using the LDPC + MIMO-OFDM system. The parameters of the system can be freely changed.
+
+### Transfer : 
+This folder contains the versions optimized for file transfer using the LDPC + MIMO-OFDM system. The parameters of the system can be freely changed.
 
 ### Utility : 
 This folder contains various useful scripts for the analysis of the system designed. Things such as the plotting of the OFDM spectrum alongside the resource allocation, detection and reasoning out of burst errors, and the plot based comparison of different systems can be done here. 
