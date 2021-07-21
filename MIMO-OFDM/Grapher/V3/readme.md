@@ -2,25 +2,25 @@
 
 There are 3 key scripts in this folder : init.m, main1.m, plotter.m. <br/>
 the scripts are to be run in the follwing order : <br/>
-1.    init.m
-2.1   main1.m
-.
-.
-.
-2.n   mainn.m
-3.    plotter.m
+1.    init.m  <br/>
+2.1   main1.m <br/>
+.             <br/>
+.             <br/>
+.             <br/>
+2.n   mainn.m <br/>
+3.    plotter.m <br/>
 
-First run the init.m script. 
-Set SNR to be the x axis elements that you want to generate the plot for.
-Set NScripts to be the number of systems you want to compare. 
+First run the init.m script. <br/>
+Set SNR to be the x axis elements that you want to generate the plot for. <br/>
+Set NScripts to be the number of systems you want to compare. <br/>
 
-Now make NScripts copies of main1.m. name them main2, main3, ... mainn.m.
-Set PlotNumber appropriately in all of the main scripts. 
-Configure the ith main file to be the ith system you want to have plotted.
-Run all the mainx.m files. 
+Now make NScripts copies of main1.m. name them main2, main3, ... mainn.m. <br/>
+Set PlotNumber appropriately in all of the main scripts. <br/>
+Configure the ith main file to be the ith system you want to have plotted. <br/>
+Run all the mainx.m files. <br/>
 
-Now, select the legend, the colours, the line type in plotter.m, and run the file. 
-The plot will be generated. 
+Now, select the legend, the colours, the line type in plotter.m, and run the file.  <br/>
+The plot will be generated. <br/>
 
 
 
