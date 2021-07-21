@@ -25,7 +25,9 @@ fig.Position = figposition([15 50 25 30]);
 
 % Write the plot names in the same order as the execution of the scripts. 
 % Pad the text with spaces such that the length of each string is constant.
-legend_text = [ '16  QAM' 
+legend_text = [ ' BPSK  '
+                ' QPSK  '
+                '16  QAM' 
                 '64  QAM'
                 '256 QAM'
               ];
@@ -33,7 +35,7 @@ legend_text = [ '16  QAM'
 % Place the desired colour coding here. Set CustomColours to false for
 % the default
 CustomColours = true;
-color_text = [ '-go'; '-ro' ; '-bo' ];
+color_text = [ '-go'; '-ro' ; '-bo' ; '-yo' ; '-mo'];
                 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

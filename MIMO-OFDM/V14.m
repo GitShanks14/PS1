@@ -89,7 +89,9 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 SNR = 50:5:90;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% DO NOT CHANGE anything from here till after the monte carlo simulator
+% Be very careful when making changes below this point
+% Only supported change is the changing of channel estimation method used
+
 Nofdm = numData * numSym * Tx * Nbits;
 InputBlockSize = lcm(Nofdm,K);
 OutputBlockSize = InputBlockSize/R;

@@ -1,10 +1,10 @@
 close all; clear; clc;
 
 % Set x axis range
-SNR = 50:5:90;
+SNR = 0:5:90;
 
 % Set number of scripts to be run
-NScripts = 3;
+NScripts = 5;
 
 BERs = zeros( NScripts, length(SNR) );
 

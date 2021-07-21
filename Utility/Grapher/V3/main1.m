@@ -3,13 +3,18 @@
 % for various systems                                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Change to configure system
 PlotNumber = 1;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%% initialize Mod / Demod %%%%%%%%%%%%%%%%%%%%%%%%%%
-ModOrd = 16;
-Nbits = ceil(log2(ModOrd));
+ModOrd = 2;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do not change. 
+Nbits = ceil(log2(ModOrd));
 defaultMod = false;
 if ( ModOrd == 2 )
     Mod = comm.BPSKModulator();
@@ -31,14 +36,14 @@ K = 32400;
 R = 1/2;
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Change to configure system
 %%%%%%%%%%%%%%%%%%%%%%%%%% Set up MIMO System %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Tx = 2;
 Rx = 2;
 
 f  = 900*10^6;
 d  = 1;
-c  = 3*10^8;
-FSPL = c/(4*pi*d*f);
 
 %%%%%%%%%%%%%%%%%%%%%%%%% Set up OFDM Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%
 FFTlen = 64;
@@ -47,11 +52,18 @@ guard = [6;6];
 PCidx = SetPCidx ( NumPivots, Tx, guard, FFTlen );
 PulseShaping = true;
 WindowLength = 8;
+CPLength = 16;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do not change. 
+c  = 3*10^8;
+FSPL = c/(4*pi*d*f);
 
 ofdmMod = comm.OFDMModulator('FFTLength',FFTlen,'PilotInputPort',true,...
     'PilotCarrierIndices',PCidx,'InsertDCNull',true,...
-    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', 16,'NumGuardBandCarriers',guard,...
-    'Windowing',PulseShaping); %,'WindowLength',WindowLength
+    'NumTransmitAntennas',Tx, 'CyclicPrefixLength', CPLength,'NumGuardBandCarriers',guard,...
+    'Windowing',PulseShaping); 
 
 if PulseShaping == true
     ofdmMod.WindowLength = WindowLength;
@@ -67,7 +79,15 @@ numSym = ofdmModDim.DataInputSize(2);    % Number of OFDM symbols
 numPilots = ofdmModDim.PilotInputSize;
 LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 
-%showResourceMapping(ofdmMod)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHANGE
+% Displaying the carrier allocation :
+% showResourceMapping(ofdmMod)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Be very careful when making changes below this point
+% Only major supported changes are is the method of channel estimation used
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                        Simulation Parameters                           %
@@ -162,10 +182,6 @@ for idx = 1:length(SNR)
             'OutputType','approxllr','NoiseVariance',variance,...
             'UnitAveragePower',true );
         end
-
-%         % Compute error statistics
-%         dataTmp = data(:,k);
-%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
     
     % Reshape Double array into LDPC convenient format
