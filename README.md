@@ -36,5 +36,8 @@ This folder contains the versions optimized for file transfer using the LDPC + M
 ### Utility : 
 This folder contains various useful scripts for the analysis of the system designed. Things such as the plotting of the OFDM spectrum alongside the resource allocation, detection and reasoning out of burst errors, and the plot based comparison of different systems can be done here. 
 
+### FFmpeg scripts : 
+This folder contains the a few prominent FFmpeg scripts used for this project.
+
 
 note : All files with the file name containing "test", were meant for debugging purposes. 
