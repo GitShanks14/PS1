@@ -6,7 +6,7 @@ The scripts can here can both be used separately, as well as in conjuncture with
 
 Explanations of a few parameters used in the script are as follows:
 
- ```ffmpeg``` 
+ ```ffmpeg``` - self explanatory
  ```-f dshow ```
  ```-rtbufsize 1000M ```
  ```-i video="Integrated Camera":audio="Microphone (Realtek(R) Audio)" ```
