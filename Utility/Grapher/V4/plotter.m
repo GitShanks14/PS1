@@ -25,8 +25,8 @@ fig.Position = figposition([15 50 25 30]);
 
 % Write the plot names in the same order as the execution of the scripts. 
 % Pad the text with spaces such that the length of each string is constant.
-legend_text = [ 'default           '
-                'with pulse shaping'
+legend_text = [ 'with pulse shaping' ;
+                'no   pulse shaping'
               ];
 
 % Place the desired colour coding here. Set CustomColours to false for
