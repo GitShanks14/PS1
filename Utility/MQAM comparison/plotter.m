@@ -10,7 +10,7 @@ hold(ax,'on');
 ax.YScale = 'log';
 xlim(ax,[SNR(1), SNR(end)]);
 ylim(ax,[1e-4 1]);
-xlabel(ax,'Eb/No (dB)');
+xlabel(ax,'SNR (dB)');
 ylabel(ax,'BER');
 fig.NumberTitle = 'off';
 fig.Renderer = 'zbuffer';
