@@ -24,7 +24,7 @@ The scripts can here can both be used separately, as well as in conjuncture with
  
  `-thread_type slice` - slice-based threading tells all CPU threads work on the same frame, reducing latency a lot.
  
- ```-maxrate 250k ``` - max data rate video
+ ```-maxrate 250k ``` - max data rate of the output video
  
  ```-bufsize 6000k ``` - buffer size for encoding, double max data rate seems to be a good starting point.
  
