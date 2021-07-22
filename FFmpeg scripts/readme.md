@@ -1,10 +1,10 @@
-## FFmpeg scripts
+# FFmpeg scripts
 
 The directory contains a few FFmpeg scripts used for this project. <br/>
 
 The scripts can here can both be used separately, as well as in conjuncture with scripts from other repositories ( after making the necessary changes in the scripts as highlighted ). 
 
-# Explanations of a few arguments used in the script are as follows:
+## Explanations of a few arguments used in the script are as follows:
 
  ```ffmpeg``` - self explanatory
  
