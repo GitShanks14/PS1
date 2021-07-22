@@ -17,7 +17,7 @@ Nbits = 2;
 
 % initialize channel coding objects
 Enc = comm.LDPCEncoder;
-Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 50);
+Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 50, 'FinalParityChecksOutputPort', true);
 K = 32400;
 R = 1/2;
 
@@ -89,6 +89,7 @@ frewind(fileID);
 streaming = true;
 vidopen = false;
 buf = 0;
+numBitErrs = 0;
 
 Gains = ones(Rx,Tx,1);
 gctr = 2;
@@ -193,19 +194,27 @@ while streaming
 
     % Loop decode LDPC
     remaining = 0;
-    par = 13;
+    par = 30;
     for LDPCframe = 1:par+1:(N1-par)
         tempin = RecData(:,LDPCframe:(LDPCframe+par));
         %disp(size(tempin));
-        tempout = reshape(Dec(tempin(:)), K, size(tempin,2));
+        [ldpcDec, parity] = Dec(tempin(:));
+        if(sum(parity, 'all') > 0)
+            disp(['Error:' num2str(sum(parity, 'all'))]);
+        end    
+        tempout = reshape(ldpcDec, K, size(tempin,2));
         DecData(:, LDPCframe:LDPCframe+par) = tempout;
-        remaining = N1-LDPCframe+par;
+        remaining = N1-(LDPCframe+par);
     end
     reset(Dec);
     release(Dec);
-    Dec1 = comm.gpu.LDPCDecoder();
+    Dec1 = comm.gpu.LDPCDecoder('FinalParityChecksOutputPort', true);
     tempin = RecData(:,N1-remaining+1:N1);
-    tempout = reshape(Dec1(tempin(:)), K, size(tempin,2));
+    [ldpcDec, parity] = Dec1(tempin(:));
+    if(sum(parity, 'all') > 0)
+            disp(['Error:' num2str(sum(parity, 'all'))]);
+    end
+    tempout = reshape(ldpcDec, K, size(tempin,2));
     DecData(:, N1-remaining+1:N1) = tempout;
 
     % Reshape bit block into array
@@ -226,6 +235,7 @@ while streaming
 %     end
     
     fwrite(fileID2, OutData,'*ubit1');
+    numBitErrs = numBitErrs + biterr(data,OutData);
 %     if(~vidopen)
 %         winopen 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoOut.mkv';
 %         vidopen = true;
@@ -235,6 +245,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                       Winding up                                        %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+disp(['Number of bit errors = ' num2str(numBitErrs)]);
 
 % Closing files
 fclose(fileID);
