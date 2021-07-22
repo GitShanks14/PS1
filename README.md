@@ -24,6 +24,9 @@ This folder contains all the previous versions implemented along the way to the 
 ### Channel Coding : 
 This folder contains the intermediate versions of the different channel coding schemes implemented before finalizing one for the final system.
 
+### FFmpeg scripts : 
+This folder contains the a few prominent FFmpeg scripts used for this project.
+
 ### Integration :
 This folder contains the intermediate versions of the integrated final products. 
 
@@ -35,9 +38,6 @@ This folder contains the versions optimized for file transfer using the LDPC + M
 
 ### Utility : 
 This folder contains various useful scripts for the analysis of the system designed. Things such as the plotting of the OFDM spectrum alongside the resource allocation, detection and reasoning out of burst errors, and the plot based comparison of different systems can be done here. 
-
-### FFmpeg scripts : 
-This folder contains the a few prominent FFmpeg scripts used for this project.
 
 
 note : All files with the file name containing "test", were meant for debugging purposes. 
