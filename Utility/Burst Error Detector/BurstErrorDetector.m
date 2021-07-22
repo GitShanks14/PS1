@@ -46,30 +46,31 @@ FullFade = reshape(FullFade,S,1);
 
 
 DeepFade = RayFade < DeepFadeThreshold2;
-R1Fail = reshape(DeepFade(1,1,:).*DeepFade(1,2,:),S,1);
-R2Fail = reshape(DeepFade(2,1,:).*DeepFade(2,2,:),S,1);
-
-T1Fail = reshape(DeepFade(1,1,:).*DeepFade(2,1,:),S,1);
-T2Fail = reshape(DeepFade(1,2,:).*DeepFade(2,2,:),S,1);
+RFail = ones(Rx,S);
+TFail = ones(Tx,S);
 
 
-figure('Name','Link Failures')
-%plot(FullFade)
-subplot(2,2,1)
-plot(R1Fail)
-title('Subplot 1: Failure of R1')
+figure('Name','Receiver Failures')
 
-subplot(2,2,2)
-plot(R2Fail)
-title('Subplot 2: Failure of R2')
+for i = 1:Rx
+    subplot(Rx,1,i)
+    for j = 1:Tx
+        RFail(i,:) = RFail(i,:).*reshape(DeepFade(i,j,:),1,S);
+    end
+    plot(RFail(i,:))
+    title(sprintf('Subplot %d: Failure of R%d',i));
+end
 
-subplot(2,2,3)
-plot(T1Fail)
-title('Subplot 3: Failure of T1')
+figure('Name','Transmitter Failures')
 
-subplot(2,2,4)
-plot(T2Fail)
-title('Subplot 4: Failure of T2')
+for j = 1:Tx
+    subplot(Tx,1,j)
+    for i = 1:Rx
+        TFail(j,:) = TFail(j,:).*reshape(DeepFade(i,j,:),1,S);
+    end
+    plot(TFail(j,:))
+    title(sprintf('Subplot %d: Failure of T%d',j));
+end
 
 
 figure('Name','Burst Errors');
