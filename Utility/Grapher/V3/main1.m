@@ -172,7 +172,7 @@ for idx = 1:length(SNR)
         
         % Channel inversion
         RxOFDM = reshape(receivedOFDMData, numData, Tx);
-        RxOFDMEst = reshape(LMMSEInversion(Tx,Rx,chGain,RxOFDM,variance), numData,1,Rx);
+        RxOFDMEst = reshape(LMMSEInversion(Tx,Rx,ChGainEst,RxOFDM,variance), numData,1,Rx);
 
         % Demodulate QPSK data
         if ( defaultMod == true )

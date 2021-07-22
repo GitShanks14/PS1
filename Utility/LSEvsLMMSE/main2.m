@@ -7,10 +7,10 @@ clc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Change to configure system
-PlotNumber = 3;
+PlotNumber = 2;
 
 %%%%%%%%%%%%%%%%%%%%%%%% initialize Mod / Demod %%%%%%%%%%%%%%%%%%%%%%%%%%
-ModOrd = 16;
+ModOrd = 2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Do not change. 
@@ -63,7 +63,7 @@ FSPL = c/(4*pi*d*f);
 ofdmMod = comm.OFDMModulator('FFTLength',FFTlen,'PilotInputPort',true,...
     'PilotCarrierIndices',PCidx,'InsertDCNull',true,...
     'NumTransmitAntennas',Tx, 'CyclicPrefixLength', CPLength,'NumGuardBandCarriers',guard,...
-    'Windowing',PulseShaping); %,'WindowLength',WindowLength
+    'Windowing',PulseShaping); 
 
 if PulseShaping == true
     ofdmMod.WindowLength = WindowLength;
@@ -182,10 +182,6 @@ for idx = 1:length(SNR)
             'OutputType','approxllr','NoiseVariance',variance,...
             'UnitAveragePower',true );
         end
-
-%         % Compute error statistics
-%         dataTmp = data(:,k);
-%         BER(:,idx) = errorRate(dataTmp(:),receivedData);
     end
     
     % Reshape Double array into LDPC convenient format
