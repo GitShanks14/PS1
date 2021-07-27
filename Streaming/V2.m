@@ -17,7 +17,7 @@ Nbits = 2;
 
 % initialize channel coding objects
 Enc = comm.LDPCEncoder;
-Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 50, 'FinalParityChecksOutputPort', true);
+Dec = comm.gpu.LDPCDecoder('MaximumIterationCount', 50); %, 'FinalParityChecksOutputPort', true);
 K = 32400;
 R = 1/2;
 
@@ -33,7 +33,7 @@ FSPL = c/(4*pi*d*f);
 %FSPL = 1;
 
 % Set up OFDM system
-FFTlen = 64;
+FFTlen = 256; %originally 64
 NumPivots = 4;
 guard = [6;6];
 PCidx = SetPCidx ( NumPivots, Tx, guard, FFTlen );
@@ -57,7 +57,7 @@ LenFrame = ofdmMod.FFTLength + ofdmMod.CyclicPrefixLength;
 %                            Input Data                                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-EbNo = 100;
+EbNo = 105;
 Nofdm = numData * numSym * Tx * Nbits;
 
 InputBlockSize = lcm(Nofdm,K);
@@ -69,8 +69,8 @@ N2 = OutputBlockSize/Nofdm;
 
 %constdiag = comm.ConstellationDiagram;
 
-ipath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoIn.mkv';
-opath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoOut.mkv';
+ipath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\input.mkv';
+opath = 'C:\Users\Aditya\Documents\MATLAB Comms\demo\output.mkv';
 
 fileID = fopen(ipath,'r');
 fileID2 = fopen(opath,'w');
@@ -95,6 +95,7 @@ Gains = ones(Rx,Tx,1);
 gctr = 2;
 
 while streaming
+    %t1 = tic();
     % Find current position and new position
     current = ftell(fileID);
     sub = fread(fileID, InputBlockSize, '*ubit1', 'ieee-le');
@@ -198,10 +199,10 @@ while streaming
     for LDPCframe = 1:par+1:(N1-par)
         tempin = RecData(:,LDPCframe:(LDPCframe+par));
         %disp(size(tempin));
-        [ldpcDec, parity] = Dec(tempin(:));
-        if(sum(parity, 'all') > 0)
-            disp(['Error:' num2str(sum(parity, 'all'))]);
-        end    
+        ldpcDec = Dec(tempin(:));
+%         if(sum(parity, 'all') > 0)
+%             disp(['Error:' num2str(sum(parity, 'all'))]);
+%         end    
         tempout = reshape(ldpcDec, K, size(tempin,2));
         DecData(:, LDPCframe:LDPCframe+par) = tempout;
         remaining = N1-(LDPCframe+par);
@@ -210,10 +211,10 @@ while streaming
     release(Dec);
     Dec1 = comm.gpu.LDPCDecoder('FinalParityChecksOutputPort', true);
     tempin = RecData(:,N1-remaining+1:N1);
-    [ldpcDec, parity] = Dec1(tempin(:));
-    if(sum(parity, 'all') > 0)
-            disp(['Error:' num2str(sum(parity, 'all'))]);
-    end
+    ldpcDec = Dec1(tempin(:));
+%     if(sum(parity, 'all') > 0)
+%             disp(['Error:' num2str(sum(parity, 'all'))]);
+%     end
     tempout = reshape(ldpcDec, K, size(tempin,2));
     DecData(:, N1-remaining+1:N1) = tempout;
 
@@ -240,6 +241,7 @@ while streaming
 %         winopen 'C:\Users\Aditya\Documents\MATLAB Comms\demo\demoOut.mkv';
 %         vidopen = true;
 %     end
+    %dt = toc(t1)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
